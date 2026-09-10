@@ -1,0 +1,27 @@
+# CMake
+build/
+out/
+CMakeCache.txt
+CMakeFiles/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# PyInstaller
+python/build/
+python/dist/
+*.spec.bak
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
