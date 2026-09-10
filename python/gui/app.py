@@ -22,8 +22,26 @@ import tkinter as tk  # noqa: E402
 from main_window import MainWindow  # noqa: E402
 
 
+def _icon_path() -> Path:
+    # Тот же паттерн поиска ресурсов, что и в parser_bindings.py: при сборке
+    # PyInstaller файлы из datas распаковываются во временный sys._MEIPASS,
+    # при запуске из исходников — берём рядом с gui/.
+    base = Path(sys._MEIPASS) if hasattr(sys, "_MEIPASS") else _GUI_DIR
+    return base / "assets" / "app_icon.png"
+
+
 def main() -> None:
     root = tk.Tk()
+    icon_path = _icon_path()
+    if icon_path.is_file():
+        try:
+            icon_image = tk.PhotoImage(file=str(icon_path))
+            root.iconphoto(True, icon_image)
+            # Ссылку нужно держать явно — иначе PhotoImage соберёт GC и
+            # значок окна слетит после выхода из main().
+            root._icon_image_ref = icon_image
+        except tk.TclError:
+            pass  # отсутствие/повреждение иконки не должно ронять GUI
     MainWindow(root)
     root.mainloop()
 

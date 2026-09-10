@@ -5,14 +5,24 @@ from __future__ import annotations
 import csv
 import tkinter as tk
 from datetime import timedelta
+from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from model import AppModel
 from parser_bindings import SliceResult, error_message_ru
+from project_io import load_project, save_project
 from widgets.file_list import FileListPanel
 from widgets.results_table import ResultRow, ResultsTable
 
-_CSV_HEADER = ["Файл", "Статус", "Время печати", "Объём, мл", "Масса, г", "Слоёв"]
+_CSV_HEADER = [
+    "Файл",
+    "Статус",
+    "Время печати",
+    "Объём, мл",
+    "Масса, г",
+    "Слоёв",
+    "Стоимость",
+]
 
 
 def format_timedelta(value: timedelta) -> str:
@@ -22,11 +32,14 @@ def format_timedelta(value: timedelta) -> str:
     return f"{hours} ч {minutes:02d} мин"
 
 
-def _row_values(entry: SliceResult) -> tuple[str, str, str, str, str, str]:
+def _row_values(
+    entry: SliceResult, model: AppModel
+) -> tuple[str, str, str, str, str, str, str]:
     if entry.error is not None:
         return (
             entry.file_path.name,
             f"Ошибка: {error_message_ru(entry.error)}",
+            "—",
             "—",
             "—",
             "—",
@@ -39,6 +52,7 @@ def _row_values(entry: SliceResult) -> tuple[str, str, str, str, str, str]:
         f"{entry.volume_ml:.2f}",
         f"{entry.weight_g:.2f}",
         str(entry.layer_count),
+        f"{model.cost_for(entry):.2f}",
     )
 
 
@@ -49,6 +63,7 @@ class MainWindow(ttk.Frame):
         self.model = AppModel()
 
         root.title("Батч-анализ файлов нарезки (.ctb)")
+        self._build_menu(root)
         self.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.file_list = FileListPanel(
@@ -67,12 +82,24 @@ class MainWindow(ttk.Frame):
         ttk.Button(controls, text="Обновить", command=self._on_refresh).pack(
             side=tk.LEFT
         )
-        ttk.Button(
-            controls, text="Экспорт в CSV…", command=self._on_export_csv
-        ).pack(side=tk.LEFT, padx=(8, 0))
 
         self.results_table = ResultsTable(self)
         self.results_table.pack(fill=tk.BOTH, expand=True)
+
+    def _build_menu(self, root: tk.Tk) -> None:
+        # "Экспорт в CSV…" раньше был отдельной кнопкой в панели controls —
+        # перенесён сюда, в меню «Файл», вместе с открытием/сохранением
+        # проекта (пункт 1 todo.md).
+        menu_bar = tk.Menu(root)
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+        file_menu.add_command(label="Открыть проект…", command=self._on_open_project)
+        file_menu.add_command(
+            label="Сохранить проект…", command=self._on_save_project
+        )
+        file_menu.add_separator()
+        file_menu.add_command(label="Экспорт в CSV…", command=self._on_export_csv)
+        menu_bar.add_cascade(label="Файл", menu=file_menu)
+        root.config(menu=menu_bar)
 
     def _on_add_files(self, paths: list[str]) -> None:
         self.model.add_files(paths)
@@ -110,13 +137,40 @@ class MainWindow(ttk.Frame):
             writer = csv.writer(csv_file, delimiter=";")
             writer.writerow(_CSV_HEADER)
             for entry in self.model.entries():
-                writer.writerow(_row_values(entry))
+                writer.writerow(_row_values(entry, self.model))
         messagebox.showinfo("Экспорт", f"Сохранено: {path}")
+
+    def _on_save_project(self) -> None:
+        path = filedialog.asksaveasfilename(
+            defaultextension=".ctbproj",
+            filetypes=[("Проект анализа", "*.ctbproj")],
+        )
+        if not path:
+            return
+        save_project(self.model.entries(), self.model.price_per_kg, Path(path))
+        messagebox.showinfo("Проект", f"Сохранено: {path}")
+
+    def _on_open_project(self) -> None:
+        path = filedialog.askopenfilename(
+            filetypes=[("Проект анализа", "*.ctbproj"), ("Все файлы", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            entries, price = load_project(Path(path))
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Проект", f"Не удалось открыть проект: {exc}")
+            return
+        self.model.load_snapshot(entries, price)
+        self.price_var.set(str(price))
+        self._refresh_view()
 
     def _refresh_view(self) -> None:
         entries = self.model.entries()
         self.file_list.set_files([entry.file_path.name for entry in entries])
-        self.results_table.set_rows([ResultRow(*_row_values(e)) for e in entries])
+        self.results_table.set_rows(
+            [ResultRow(*_row_values(e, self.model)) for e in entries]
+        )
 
         totals = self.model.totals()
         totals_text = (

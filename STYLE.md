@@ -44,13 +44,18 @@ chitubox_utility/
 │   │   ├── __init__.py
 │   │   ├── app.py              # точка входа
 │   │   ├── model.py            # логика без tkinter (список файлов, итоги)
+│   │   ├── project_io.py       # сохранение/открытие проекта (JSON), без tkinter
 │   │   ├── main_window.py
+│   │   ├── assets/
+│   │   │   ├── app_icon.png     # значок окна/панели задач (root.iconphoto)
+│   │   │   └── app_icon.ico     # значок .exe (иконка в Проводнике/на ярлыке)
 │   │   └── widgets/
 │   │       ├── file_list.py
 │   │       └── results_table.py
 │   ├── tests/
 │   │   ├── test_parser_bindings.py   # сверка с теми же examples/
-│   │   └── test_model.py             # пересчёт итогов/стоимости
+│   │   ├── test_model.py             # пересчёт итогов/стоимости
+│   │   └── test_project_io.py        # round-trip сохранения/открытия проекта
 │   └── packaging/
 │       └── pyinstaller.spec
 │

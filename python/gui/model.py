@@ -60,8 +60,25 @@ class AppModel:
         """Результаты разбора в порядке добавления файлов."""
         return [self._results[path] for path in self._order]
 
+    def load_snapshot(
+        self, entries: Iterable[SliceResult], price_per_kg: float
+    ) -> None:
+        """Заменяет текущий список файлами из уже готового снимка (см.
+        `project_io.py`) — в отличие от `add_files`, не зовёт `parse_file`,
+        поэтому работает даже если исходные .ctb-файлы недоступны."""
+        self._order = [entry.file_path for entry in entries]
+        self._results = {entry.file_path: entry for entry in entries}
+        self.price_per_kg = price_per_kg
+
     def set_price_per_kg(self, price: float) -> None:
         self.price_per_kg = price
+
+    def cost_for(self, entry: SliceResult) -> float:
+        """Стоимость одного файла по текущей цене за кг — та же формула,
+        что и в totals(), но для одной строки таблицы."""
+        if entry.error is not None:
+            return 0.0
+        return entry.weight_g / 1000.0 * self.price_per_kg
 
     def totals(self) -> Totals:
         ok_entries = [entry for entry in self.entries() if entry.error is None]

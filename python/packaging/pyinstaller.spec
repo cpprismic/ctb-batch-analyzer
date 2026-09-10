@@ -23,11 +23,18 @@ if not binaries:
     print(f"[pyinstaller.spec] ВНИМАНИЕ: {_dll_path} не найден — соберите "
           f"core (cmake --build build) перед упаковкой .exe")
 
+# Значок приложения: .png — для root.iconphoto() в окне (нужен рядом с .exe
+# во время работы, поэтому идёт в datas), .ico — ресурс самого .exe-файла
+# (иконка в Проводнике/на ярлыке/в панели задач).
+_icon_ico = ROOT / "gui" / "assets" / "app_icon.ico"
+_icon_png = ROOT / "gui" / "assets" / "app_icon.png"
+datas = [(str(_icon_png), "assets")] if _icon_png.is_file() else []
+
 a = Analysis(
     [str(ROOT / "gui" / "app.py")],
     pathex=[str(ROOT), str(ROOT / "gui")],
     binaries=binaries,
-    datas=[],
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -54,4 +61,5 @@ exe = EXE(
     upx=False,
     console=False,
     runtime_tmpdir=None,
+    icon=str(_icon_ico) if _icon_ico.is_file() else None,
 )

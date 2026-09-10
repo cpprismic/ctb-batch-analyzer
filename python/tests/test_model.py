@@ -67,3 +67,36 @@ def test_add_same_file_twice_is_not_duplicated():
     path = EXAMPLES_DIR / "example_1.ctb"
     model.add_files([path, path])
     assert len(model.entries()) == 1
+
+
+def test_cost_for_matches_totals_formula():
+    model = AppModel()
+    model.add_files([EXAMPLES_DIR / "example_1.ctb"])
+    model.set_price_per_kg(1000.0)
+
+    entry = model.entries()[0]
+    assert model.cost_for(entry) == pytest.approx(model.totals().total_cost)
+
+
+def test_cost_for_is_zero_for_broken_file(tmp_path):
+    bogus = tmp_path / "broken.ctb"
+    bogus.write_bytes(b"\x00" * 64)
+
+    model = AppModel()
+    model.add_files([bogus])
+    model.set_price_per_kg(1000.0)
+
+    entry = model.entries()[0]
+    assert model.cost_for(entry) == 0.0
+
+
+def test_load_snapshot_replaces_state_without_reparsing():
+    model = AppModel()
+    model.add_files([EXAMPLES_DIR / "example_1.ctb"])
+    snapshot_entries = model.entries()
+
+    fresh_model = AppModel()
+    fresh_model.load_snapshot(snapshot_entries, price_per_kg=42.0)
+
+    assert fresh_model.entries() == snapshot_entries
+    assert fresh_model.price_per_kg == 42.0
