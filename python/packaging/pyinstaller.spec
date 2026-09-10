@@ -45,8 +45,7 @@ a = Analysis(
 pyz = PYZ(a.pure, a.zipped_data)
 
 # Единый .exe (one-file режим: a.binaries/a.zipfiles/a.datas передаются
-# прямо в EXE, без отдельного COLLECT) — раздел 5 task.md требует именно
-# портативный однофайловый .exe.
+# прямо в EXE, без отдельного COLLECT) — нужен портативный однофайловый .exe.
 exe = EXE(
     pyz,
     a.scripts,
